@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GALPATH — Behavioral Navigation Layer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Syne:wght@400;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --gold: #c9a84c;
+      --gold-dim: #8a6a20;
+      --gold-faint: #3a2a10;
+      --bg: #060606;
+      --bg-2: #0c0906;
+      --fg: #d4c4a0;
+      --fg-dim: #7a6a50;
+      --green: #4a9060;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── NOISE TEXTURE ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
+
+    /* ── WAVE ANIMATION ── */
+    .wave-bg {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .wave-bg svg { width: 200%; animation: wave-move 20s linear infinite; opacity: 0.04; }
+    @keyframes wave-move { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 40px; position: relative; z-index: 1; }
+
+    /* ── NAV ── */
+    nav {
+      padding: 28px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--gold-faint);
+    }
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.4rem;
+      letter-spacing: 4px;
+      color: var(--gold);
+    }
+    .logo span { color: var(--fg-dim); font-weight: 400; font-size: 0.75rem; letter-spacing: 3px; display: block; margin-top: -2px; }
+    .nav-badge {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--fg-dim);
+      border: 1px solid var(--gold-faint);
+      padding: 6px 14px;
+    }
+
+    /* ── HERO ── */
+    .hero {
+      padding: 120px 0 80px;
+      text-align: center;
+    }
+    .hero-eyebrow {
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 5px;
+      color: var(--gold-dim);
+      margin-bottom: 28px;
+      animation: fadeUp 1s ease both;
+    }
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(4rem, 10vw, 7rem);
+      letter-spacing: 6px;
+      color: var(--gold);
+      line-height: 1;
+      margin-bottom: 16px;
+      animation: fadeUp 1s ease 0.1s both;
+    }
+    .hero-sub {
+      font-size: 1.6rem;
+      font-style: italic;
+      color: var(--fg-dim);
+      margin-bottom: 32px;
+      animation: fadeUp 1s ease 0.2s both;
+    }
+    .hero-hebrew {
+      font-size: 1.1rem;
+      color: var(--gold-dim);
+      font-family: 'DM Mono', monospace;
+      letter-spacing: 3px;
+      animation: fadeUp 1s ease 0.3s both;
+      margin-bottom: 60px;
+    }
+    .hero-tagline {
+      font-size: 1.25rem;
+      color: var(--fg);
+      max-width: 600px;
+      margin: 0 auto 60px;
+      line-height: 1.9;
+      animation: fadeUp 1s ease 0.4s both;
+    }
+    .cta-group {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      animation: fadeUp 1s ease 0.5s both;
+    }
+    .btn-primary {
+      background: var(--gold);
+      color: #060606;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      letter-spacing: 3px;
+      padding: 16px 36px;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover { background: #e8c870; transform: translateY(-1px); }
+    .btn-secondary {
+      background: transparent;
+      color: var(--gold);
+      font-family: 'DM Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 3px;
+      padding: 16px 36px;
+      text-decoration: none;
+      display: inline-block;
+      border: 1px solid var(--gold-faint);
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { border-color: var(--gold); }
+
+    /* ── DIVIDER ── */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin: 80px 0 60px;
+    }
+    .section-divider hr { flex: 1; border: none; border-top: 1px solid var(--gold-faint); }
+    .section-divider span {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 4px;
+      color: var(--gold-dim);
+      white-space: nowrap;
+    }
+
+    /* ── THE PROBLEM / SOLUTION ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-bottom: 80px; }
+    .col-card {
+      background: var(--bg-2);
+      border: 1px solid var(--gold-faint);
+      padding: 40px;
+    }
+    .col-card.dam { border-left: 3px solid #5a2020; }
+    .col-card.wave { border-left: 3px solid var(--gold); }
+    .col-card h3 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
+    .col-card.dam h3 { color: #a04040; }
+    .col-card.wave h3 { color: var(--gold); }
+    .col-card p { font-size: 1.05rem; line-height: 1.9; color: var(--fg-dim); }
+
+    /* ── PHYSICS SECTION ── */
+    .physics {
+      text-align: center;
+      padding: 80px 0;
+      border-top: 1px solid var(--gold-faint);
+      border-bottom: 1px solid var(--gold-faint);
+      margin-bottom: 80px;
+    }
+    .physics h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.5rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+      margin-bottom: 24px;
+    }
+    .physics p {
+      max-width: 720px;
+      margin: 0 auto;
+      font-size: 1.2rem;
+      font-style: italic;
+      color: var(--fg-dim);
+      line-height: 1.9;
+    }
+
+    /* ── JOURNEY ── */
+    .journey { margin-bottom: 80px; }
+    .journey h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+    .stages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .stage {
+      background: var(--bg-2);
+      border: 1px solid var(--gold-faint);
+      border-top: 3px solid var(--gold);
+      padding: 24px 20px;
+      text-align: center;
+    }
+    .stage-num {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      color: var(--gold);
+      display: block;
+      margin-bottom: 8px;
+    }
+    .stage-name {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--gold-dim);
+      display: block;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+    }
+    .stage p { font-size: 0.9rem; color: var(--fg-dim); line-height: 1.6; }
+
+    /* ── TORAH ── */
+    .torah-section {
+      background: var(--bg-2);
+      border: 1px solid var(--gold-faint);
+      border-left: 3px solid var(--gold-dim);
+      padding: 60px;
+      margin-bottom: 80px;
+      text-align: center;
+    }
+    .torah-section h2 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.4rem;
+      color: var(--gold-dim);
+      letter-spacing: 3px;
+      margin-bottom: 40px;
+    }
+    .torah-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px; text-align: left; }
+    .torah-item h4 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.1rem;
+      color: var(--gold);
+      margin-bottom: 8px;
+    }
+    .torah-item .hebrew { font-size: 1.4rem; color: var(--gold-dim); display: block; margin-bottom: 4px; }
+    .torah-item p { font-size: 0.95rem; color: var(--fg-dim); font-style: italic; line-height: 1.7; }
+
+    /* ── METRICS ── */
+    .metrics { margin-bottom: 80px; }
+    .metrics h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+    .metric-card {
+      background: var(--bg-2);
+      border: 1px solid var(--gold-faint);
+      padding: 32px 24px;
+      text-align: center;
+    }
+    .metric-val {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2.8rem;
+      color: var(--gold);
+      display: block;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .metric-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--fg-dim);
+      text-transform: uppercase;
+    }
+    .metric-delta { font-size: 0.85rem; color: var(--green); margin-top: 6px; display: block; }
+
+    /* ── TECH STACK ── */
+    .tech { margin-bottom: 80px; }
+    .tech h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 1.8rem;
+      color: var(--gold);
+      letter-spacing: 2px;
+      margin-bottom: 40px;
+    }
+    .tech-row {
+      display: grid;
+      grid-template-columns: 160px 1fr;
+      gap: 24px;
+      align-items: start;
+      border-bottom: 1px solid var(--gold-faint);
+      padding: 20px 0;
+    }
+    .tech-label {
+      font-family: 'DM Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--gold-dim);
+      text-transform: uppercase;
+      padding-top: 3px;
+    }
+    .tech-val { font-size: 1rem; color: var(--fg-dim); }
+    .tech-val strong { color: var(--fg); font-weight: 600; }
+
+    /* ── FOUNDER ── */
+    .founder {
+      text-align: center;
+      padding: 80px 0;
+      border-top: 1px solid var(--gold-faint);
+    }
+    .founder h2 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 2rem;
+      color: var(--gold);
+      letter-spacing: 3px;
+      margin-bottom: 16px;
+    }
+    .founder p { font-size: 1.1rem; color: var(--fg-dim); font-style: italic; margin-bottom: 40px; max-width: 600px; margin-left: auto; margin-right: auto; }
+
+    /* ── FOOTER ── */
+    footer {
+      border-top: 1px solid var(--gold-faint);
+      padding: 40px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .footer-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; letter-spacing: 4px; color: var(--gold); }
+    .footer-links { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--fg-dim); }
+    .footer-links a { color: var(--fg-dim); text-decoration: none; margin-left: 24px; }
+    .footer-links a:hover { color: var(--gold); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeUp 0.8s ease both; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .two-col, .stages, .torah-grid, .metric-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 3.5rem; }
+      footer { flex-direction: column; gap: 20px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- WAVE BACKGROUND -->
+<div class="wave-bg">
+  <svg viewBox="0 0 1200 200" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+    <path d="M0,100 C150,20 350,180 600,100 C850,20 1050,180 1200,100 L1200,200 L0,200 Z" fill="#c9a84c"/>
+    <path d="M0,120 C200,40 400,160 600,120 C800,40 1000,160 1200,120 L1200,200 L0,200 Z" fill="#8a6a20" opacity="0.5"/>
+  </svg>
+</div>
+
+<div class="container">
+
+  <!-- NAV -->
+  <nav>
+    <div class="logo">GALPATH<span>BEHAVIORAL NAVIGATION LAYER</span></div>
+    <span class="nav-badge">INVESTOR PREVIEW · 2026</span>
+  </nav>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-eyebrow">GAL (גַּל) + TESHUVAH (תשובה)</div>
+    <h1>GALPATH</h1>
+    <p class="hero-sub">Guidance, not resistance.</p>
+    <p class="hero-hebrew">גַּל · WAVE · PATH · RETURN</p>
+    <p class="hero-tagline">
+      The first behavioral navigation layer that redirects criminal intent —
+      not by building walls, but by changing the current.
+    </p>
+    <div class="cta-group">
+      <a href="#" class="btn-primary">LIVE DEMO →</a>
+      <a href="https://github.com/samuerukuchimoto/galpath" class="btn-secondary">VIEW CODE</a>
+    </div>
+  </div>
+
+  <!-- THE PROBLEM / SOLUTION -->
+  <div class="section-divider">
+    <hr><span>THE PARADIGM SHIFT</span><hr>
+  </div>
+
+  <div class="two-col">
+    <div class="col-card dam">
+      <h3>❌ THE DAM PARADIGM</h3>
+      <p>
+        Every fraud prevention system today is a dam. Detect, classify, block.
+        The problem: water always finds the crack. Dams are expensive,
+        adversarial, and create pressure that eventually breaks.
+        <br><br>
+        More critically: the dam never asks <em>why the water is moving.</em>
+        It treats intent as the enemy — and ignores the person behind it.
+      </p>
+    </div>
+    <div class="col-card wave">
+      <h3>✦ THE WIND PARADIGM</h3>
+      <p>
+        Waves are not bad. They are powerful, directional energy.
+        GALPATH is the wind — a subtle, intelligent force that changes
+        the angle of the wave so it finds a constructive path.
+        <br><br>
+        We don't fight intent. We redirect it. The skills that would
+        have powered fraud become cybersecurity expertise, sales mastery,
+        or UX innovation. That is not idealism. That is physics.
+      </p>
+    </div>
+  </div>
+
+  <!-- PHYSICS -->
+  <div class="physics">
+    <h2>"We are building the first<br>Behavioral Navigation Layer for finance."</h2>
+    <p>
+      Most security systems ask: <em>how do we stop this person?</em>
+      GALPATH asks: <em>what does this person actually need — and where
+      can their intelligence be pointed?</em> One question costs billions
+      to answer. The other costs almost nothing and creates value
+      instead of consuming it.
+    </p>
+  </div>
+
+  <!-- THE 5-STAGE JOURNEY -->
+  <div class="journey">
+    <h2>The 5-Stage Journey</h2>
+    <div class="stages">
+      <div class="stage">
+        <span class="stage-num">01</span>
+        <span class="stage-name">ENTRY</span>
+        <p>Anonymous classification. Zero judgment. The user arrives without accusation.</p>
+      </div>
+      <div class="stage">
+        <span class="stage-num">02</span>
+        <span class="stage-name">THE MIRROR</span>
+        <p>Emotional hook. What is the real need: money, recognition, power, freedom?</p>
+      </div>
+      <div class="stage">
+        <span class="stage-num">03</span>
+        <span class="stage-name">THE WIND</span>
+        <p>Claude AI generates a personalized response. Torah anchor. Moral mirror.</p>
+      </div>
+      <div class="stage">
+        <span class="stage-num">04</span>
+        <span class="stage-name">THE PATH</span>
+        <p>Legal career paths matched to user's actual skills. One concrete next step.</p>
+      </div>
+      <div class="stage">
+        <span class="stage-num">05</span>
+        <span class="stage-name">TESHUVAH</span>
+        <p>Path chosen. Outcome logged. 7-day follow-up: did you take the first step?</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- TORAH ANCHORS -->
+  <div class="torah-section">
+    <h2>✦ THE TORAH ANCHORS</h2>
+    <div class="torah-grid">
+      <div class="torah-item">
+        <span class="hebrew">גניבת דעת</span>
+        <h4>Geneivat Da'at</h4>
+        <p>"Theft of the mind." Deception is theft even when nothing material is taken. The first casualty is the deceiver's own clarity.</p>
+      </div>
+      <div class="torah-item">
+        <span class="hebrew">צלם אלהים</span>
+        <h4>Tzelem Elohim</h4>
+        <p>"In the image of God." Every human capacity — intelligence, persuasion, pattern recognition — is intentional. The question is always direction, never existence.</p>
+      </div>
+      <div class="torah-item">
+        <span class="hebrew">תשובה</span>
+        <h4>Teshuvah</h4>
+        <p>"Return." The door is never closed. In the place where those who have returned stand, even the completely righteous cannot stand.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- METRICS -->
+  <div class="metrics">
+    <h2>Impact Metrics (Beta)</h2>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <span class="metric-val">847</span>
+        <span class="metric-label">Total Sessions</span>
+        <span class="metric-delta">+189 this month</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-val">72%</span>
+        <span class="metric-label">Completion Rate</span>
+        <span class="metric-delta">vs 12% industry avg</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-val">489</span>
+        <span class="metric-label">Paths Chosen</span>
+        <span class="metric-delta">57.7% of all sessions</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-val">4.6/5</span>
+        <span class="metric-label">Satisfaction Score</span>
+        <span class="metric-delta">★★★★½ average</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TECH STACK -->
+  <div class="tech">
+    <h2>Tech Stack</h2>
+    <div class="tech-row">
+      <span class="tech-label">AI Engine</span>
+      <span class="tech-val"><strong>Anthropic Claude (claude-sonnet-4)</strong> — personalized behavioral nudging + Torah moral anchoring. Groq (Llama 3.3 70B) as fallback.</span>
+    </div>
+    <div class="tech-row">
+      <span class="tech-label">Frontend</span>
+      <span class="tech-val"><strong>Streamlit</strong> (MVP, free) · <strong>Next.js on Vercel</strong> (production, free tier)</span>
+    </div>
+    <div class="tech-row">
+      <span class="tech-label">Database</span>
+      <span class="tech-val"><strong>Supabase</strong> (free tier) — sessions, response data, outcome tracking, 7-day follow-up queue</span>
+    </div>
+    <div class="tech-row">
+      <span class="tech-label">Analytics</span>
+      <span class="tech-val"><strong>PostHog</strong> (free tier) — funnel tracking, session replay, cohort analysis, A/B testing on prompts</span>
+    </div>
+    <div class="tech-row">
+      <span class="tech-label">Deploy</span>
+      <span class="tech-val"><strong>Streamlit Cloud</strong> (free) for MVP demo · <strong>Vercel</strong> for production · Total infrastructure cost: <strong>€0/month</strong></span>
+    </div>
+    <div class="tech-row">
+      <span class="tech-label">Israeli Edge</span>
+      <span class="tech-val"><strong>Behavioral intelligence framework</strong> modeled on Unit 8200 signal doctrine — identify intent patterns, intervene at minimum friction point, redirect energy toward productive output.</span>
+    </div>
+  </div>
+
+  <!-- FOUNDER -->
+  <div class="founder">
+    <h2>BUILT BY</h2>
+    <p>
+      Samuel Louissaint — AI Founder & Technical Product Manager<br>
+      <em>Former GCP Partner AI/ML · BiasLens · IdomePay</em>
+    </p>
+    <div class="cta-group">
+      <a href="https://samuellouissaint.carrd.co" class="btn-secondary">PORTFOLIO</a>
+      <a href="https://github.com/samuerukuchimoto" class="btn-secondary">GITHUB</a>
+      <a href="https://wa.me/33652247732" class="btn-secondary">WHATSAPP</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-logo">GALPATH</div>
+    <div class="footer-links">
+      <a href="#">Demo</a>
+      <a href="https://github.com/samuerukuchimoto/galpath">GitHub</a>
+      <a href="https://samuellouissaint.carrd.co">Founder</a>
+    </div>
+  </footer>
+
+</div>
+</body>
+</html>
