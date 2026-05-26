@@ -14,6 +14,8 @@ GALPATH is the first behavioral navigation platform that addresses financial fra
 
 GALPATH is that door.
 
+**[🚀 Try it live here →](https://galpath.streamlit.app)**
+
 ---
 
 ## The Physics
